@@ -620,7 +620,7 @@ FixedWingModeManager::control_auto(const float control_interval, const Vector2d 
 		} else
 #endif // CONFIG_FIGURE_OF_EIGHT
 		{
-			control_auto_loiter(control_interval, curr_pos, ground_speed, current_sp, pos_sp_next);
+			control_auto_loiter(control_interval, curr_pos, ground_speed, pos_sp_prev, current_sp, pos_sp_next);
 
 		}
 
@@ -809,39 +809,8 @@ FixedWingModeManager::control_auto_position(const float control_interval, const 
 	const float target_airspeed = pos_sp_curr.cruising_speed > FLT_EPSILON ? pos_sp_curr.cruising_speed : NAN;
 
 	// waypoint is a plain navigation waypoint
-	float position_sp_alt = pos_sp_curr.alt;
-
-	// Altitude first order hold (FOH)
-	if (_position_setpoint_previous_valid &&
-	    ((pos_sp_prev.type == position_setpoint_s::SETPOINT_TYPE_POSITION) ||
-	     (pos_sp_prev.type == position_setpoint_s::SETPOINT_TYPE_LOITER))
-	   ) {
-		const float d_curr_prev = get_distance_to_next_waypoint(pos_sp_curr.lat, pos_sp_curr.lon, pos_sp_prev.lat,
-					  pos_sp_prev.lon);
-
-		// Do not try to find a solution if the last waypoint is inside the acceptance radius of the current one
-		if (d_curr_prev > math::max(acc_rad, fabsf(pos_sp_curr.loiter_radius))) {
-			// Calculate distance to current waypoint
-			const float d_curr = get_distance_to_next_waypoint(pos_sp_curr.lat, pos_sp_curr.lon, _current_latitude,
-					     _current_longitude);
-
-			// Save distance to waypoint if it is the smallest ever achieved, however make sure that
-			// _min_current_sp_distance_xy is never larger than the distance between the current and the previous wp
-			_min_current_sp_distance_xy = math::min(d_curr, _min_current_sp_distance_xy, d_curr_prev);
-
-			// if the minimal distance is smaller than the acceptance radius, we should be at waypoint alt
-			// navigator will soon switch to the next waypoint item (if there is one) as soon as we reach this altitude
-			if (_min_current_sp_distance_xy > math::max(acc_rad, fabsf(pos_sp_curr.loiter_radius))) {
-				// The setpoint is set linearly and such that the system reaches the current altitude at the acceptance
-				// radius around the current waypoint
-				const float delta_alt = (pos_sp_curr.alt - pos_sp_prev.alt);
-				const float grad = -delta_alt / (d_curr_prev - math::max(acc_rad, fabsf(pos_sp_curr.loiter_radius)));
-				const float a = pos_sp_prev.alt - grad * d_curr_prev;
-
-				position_sp_alt = a + grad * _min_current_sp_distance_xy;
-			}
-		}
-	}
+	const float position_sp_alt = calculateFirstOrderHoldAltitude(_position_setpoint_previous_valid, pos_sp_prev,
+				      pos_sp_curr, _current_latitude, _current_longitude, acc_rad, _min_current_sp_distance_xy);
 
 	const fixed_wing_longitudinal_setpoint_s fw_longitudinal_control_sp = {
 		.timestamp = hrt_absolute_time(),
@@ -926,7 +895,7 @@ FixedWingModeManager::control_auto_velocity(const float control_interval, const 
 
 void
 FixedWingModeManager::control_auto_loiter(const float control_interval, const Vector2d &curr_pos,
-		const Vector2f &ground_speed, const position_setpoint_s &pos_sp_curr,
+		const Vector2f &ground_speed, const position_setpoint_s &pos_sp_prev, const position_setpoint_s &pos_sp_curr,
 		const position_setpoint_s &pos_sp_next)
 {
 	// current waypoint (the one currently heading for)
@@ -939,6 +908,12 @@ FixedWingModeManager::control_auto_loiter(const float control_interval, const Ve
 		loiter_radius = fabsf(_param_nav_loiter_rad.get());
 		loiter_direction_ccw = _param_nav_loiter_rad.get() < -FLT_EPSILON;
 	}
+
+	// Smoothly ramp the altitude setpoint from the previous setpoint such that the loiter altitude is reached
+	// by the time the vehicle arrives at the loiter circle.
+	const float acc_rad = math::max(_directional_guidance.switchDistance(500.0f), loiter_radius);
+	const float position_sp_alt = calculateFirstOrderHoldAltitude(_position_setpoint_previous_valid, pos_sp_prev,
+				      pos_sp_curr, _current_latitude, _current_longitude, acc_rad, _min_current_sp_distance_xy);
 
 	Vector2f curr_pos_local{_local_pos.x, _local_pos.y};
 	Vector2f curr_wp_local{_global_local_proj_ref.project(curr_wp(0), curr_wp(1))};
@@ -1001,7 +976,7 @@ FixedWingModeManager::control_auto_loiter(const float control_interval, const Ve
 
 	const fixed_wing_longitudinal_setpoint_s fw_longitudinal_control_sp = {
 		.timestamp = hrt_absolute_time(),
-		.altitude = pos_sp_curr.alt,
+		.altitude = position_sp_alt,
 		.height_rate = NAN,
 		.equivalent_airspeed = target_airspeed,
 		.pitch_direct = NAN,

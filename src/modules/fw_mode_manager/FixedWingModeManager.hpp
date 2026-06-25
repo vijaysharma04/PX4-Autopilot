@@ -43,6 +43,7 @@
 #include "launchdetection/LaunchDetector.h"
 #include "runway_takeoff/RunwayTakeoff.h"
 #include "ControllerConfigurationHandler.hpp"
+#include "FirstOrderHoldAltitude.hpp"
 
 #include <float.h>
 #include <drivers/drv_hrt.h>
@@ -539,11 +540,13 @@ private:
 	 * @param control_interval Time since last position control call [s]
 	 * @param curr_pos Current 2D local position vector of vehicle [m]
 	 * @param ground_speed Local 2D ground speed of vehicle [m/s]
+	 * @param pos_sp_prev previous position setpoint
 	 * @param pos_sp_curr current position setpoint
 	 * @param pos_sp_next next position setpoint
 	 */
 	void control_auto_loiter(const float control_interval, const Vector2d &curr_pos, const Vector2f &ground_speed,
-				 const position_setpoint_s &pos_sp_curr, const position_setpoint_s &pos_sp_next);
+				 const position_setpoint_s &pos_sp_prev, const position_setpoint_s &pos_sp_curr,
+				 const position_setpoint_s &pos_sp_next);
 
 
 	/**
