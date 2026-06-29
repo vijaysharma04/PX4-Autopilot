@@ -125,6 +125,9 @@ bool FlightTaskAuto::update()
 		_gear.landing_gear = landing_gear_s::GEAR_UP;
 	}
 
+	// consumes one sample, so refresh once and reuse for landing and yaw nudging
+	const bool sticks_available = _sticks.checkAndUpdateStickInputs();
+
 	switch (_type) {
 	case WaypointType::idle:
 		// Send zero thrust setpoint
@@ -134,7 +137,7 @@ bool FlightTaskAuto::update()
 		break;
 
 	case WaypointType::land:
-		_prepareLandSetpoints();
+		_prepareLandSetpoints(sticks_available);
 		break;
 
 	case WaypointType::velocity:
@@ -209,7 +212,7 @@ bool FlightTaskAuto::update()
 	const int nudging = _param_mpc_auto_nudging.get();
 	const bool yaw_nudge_enabled = ((nudging & 1) && rc_yaw_type) || ((nudging & 2) && _type == WaypointType::land);
 
-	if (yaw_nudge_enabled && _sticks.checkAndUpdateStickInputs()) {
+	if (yaw_nudge_enabled && sticks_available) {
 		if (fabsf(_sticks.getYawExpo()) > FLT_EPSILON) {
 			_manual_yaw_active = true;
 		}
@@ -244,7 +247,7 @@ void FlightTaskAuto::rcHelpModifyYaw(float &yaw_sp)
 	}
 }
 
-void FlightTaskAuto::_prepareLandSetpoints()
+void FlightTaskAuto::_prepareLandSetpoints(bool sticks_available)
 {
 	_velocity_setpoint.setNaN(); // Don't take over any smoothed velocity setpoint
 
@@ -268,7 +271,7 @@ void FlightTaskAuto::_prepareLandSetpoints()
 	_land_position = Vector3f(_triplet_current(0), _triplet_current(1), NAN);
 
 	// User input assisted landing
-	if ((_param_mpc_auto_nudging.get() & 2) && _sticks.checkAndUpdateStickInputs()) {
+	if ((_param_mpc_auto_nudging.get() & 2) && sticks_available) {
 		// Stick full up -1 -> stop, stick full down 1 -> double the speed
 		vertical_speed *= (1 - _sticks.getThrottleZeroCenteredExpo());
 
@@ -507,10 +510,17 @@ bool FlightTaskAuto::_evaluatePositionSetpointTriplet()
 					_manual_yaw_active = false; // navigator published a different yaw, reset nudge latch
 				}
 
-			} else if (!_manual_yaw_active && (_type != WaypointType::land || _type_previous != WaypointType::land)) {
-				// Skip when manual yaw latch is active (nudge holds heading until mode switch) or
-				// during ongoing land (heading initialised on first cycle, only nudging/weathervane may change it).
-				_set_heading_from_mode();
+			} else if (!_manual_yaw_active) {
+				if (_type == WaypointType::land && _type_previous == WaypointType::land) {
+					// on a finite->NaN transition (e.g. precision landing lost the target) relax to the current heading
+					if (PX4_ISFINITE(_triplet_yaw)) {
+						_yaw_setpoint = _yaw;
+						_yawspeed_setpoint = NAN;
+					}
+
+				} else {
+					_set_heading_from_mode();
+				}
 			}
 
 			_triplet_yaw = triplet_yaw; // NaN resets for future detection, finite value tracks last seen
