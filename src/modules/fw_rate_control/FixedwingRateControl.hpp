@@ -153,10 +153,6 @@ private:
 
 	bool _in_fw_or_transition_wo_tailsitter_transition{false}; // only run the FW attitude controller in these states
 
-	// Tailsitter body frame conversion:
-	// vector in FW body frame = _q_mc_to_fw.rotateVector(vector in MC body frame);
-	const matrix::Quatf _q_mc_to_fw{matrix::Eulerf{0.f, -M_PI_2_F, 0.f}};
-
 	// enum for bitmask of VT_FW_DIFTHR_EN parameter options
 	enum class VTOLFixedWingDifferentialThrustEnabledBit : int32_t {
 		YAW_BIT = (1 << 0),

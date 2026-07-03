@@ -254,10 +254,11 @@ void FixedwingRateControl::Run()
 		Vector3f rates(angular_velocity.xyz);
 		Vector3f angular_accel{angular_velocity.xyz_derivative};
 
-		// Tailsitter: rotate measurements from MC to FW frame (controller is in FW frame, interface in MC)
+		// Tailsitter: rotate setpoint from hover to fixed-wing frame (controller is in fixed-wing frame, interface in hover)
 		if (_vehicle_status.is_vtol_tailsitter) {
-			rates = _q_mc_to_fw.rotateVector(rates);
-			angular_accel = _q_mc_to_fw.rotateVector(angular_accel);
+			rates = Vector3f(-angular_velocity.xyz[2], angular_velocity.xyz[1], angular_velocity.xyz[0]);
+			angular_accel = Vector3f(-angular_velocity.xyz_derivative[2], angular_velocity.xyz_derivative[1],
+						 angular_velocity.xyz_derivative[0]);
 		}
 
 		// vehicle status update must be before the vehicle_control_mode poll, otherwise rate sp are not published during whole transition
@@ -372,9 +373,9 @@ void FixedwingRateControl::Run()
 
 				Vector3f body_rates_setpoint = Vector3f(_rates_sp.roll, _rates_sp.pitch, _rates_sp.yaw);
 
-				// Tailsitter: rotate setpoint from MC to FW frame (controller is in FW frame, interface in MC)
+				// Tailsitter: rotate setpoint from hover to fixed-wing frame (controller is in fixed-wing frame, interface in hover)
 				if (_vehicle_status.is_vtol_tailsitter) {
-					body_rates_setpoint = _q_mc_to_fw.rotateVector(body_rates_setpoint);
+					body_rates_setpoint = Vector3f(-_rates_sp.yaw, _rates_sp.pitch, _rates_sp.roll);
 				}
 
 				const Vector3f gain_ff(_param_fw_rr_ff.get(), _param_fw_pr_ff.get(), _param_fw_yr_ff.get());
@@ -448,10 +449,11 @@ void FixedwingRateControl::Run()
 		_vehicle_torque_setpoint.xyz[2] = math::constrain(_vehicle_torque_setpoint.xyz[2] + _param_fw_rll_to_yaw_ff.get() *
 						  _vehicle_torque_setpoint.xyz[0], -1.f, 1.f);
 
-		// Tailsitter: rotate back from FW to MC body frame
+		// Tailsitter: rotate back to body frame from airspeed frame
 		if (_vehicle_status.is_vtol_tailsitter) {
-			const Vector3f torque = _q_mc_to_fw.rotateVectorInverse(Vector3f(_vehicle_torque_setpoint.xyz));
-			torque.copyTo(_vehicle_torque_setpoint.xyz);
+			const float helper = _vehicle_torque_setpoint.xyz[0];
+			_vehicle_torque_setpoint.xyz[0] = _vehicle_torque_setpoint.xyz[2];
+			_vehicle_torque_setpoint.xyz[2] = -helper;
 		}
 
 		/* Only publish if any of the proper modes are enabled */
