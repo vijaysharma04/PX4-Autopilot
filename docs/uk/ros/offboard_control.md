@@ -14,7 +14,7 @@ This is done through the MAVLink protocol, specifically the [SET_POSITION_TARGET
 
 ### Enable RC Override
 
-In _QGroundControl_ you can set the [COM_RC_OVERRIDE](../advanced_config/parameter_reference.md#COM_RC_OVERRIDE) parameter to automatically switch from offboard mode (or any mode) to Position mode if the RC sticks are moved.
+In _QGroundControl_ the [MAN_OVERRIDE_SPD](../advanced_config/parameter_reference.md#MAN_OVERRIDE_SPD) parameter controls automatically switching from offboard (or autonomous) mode to Position mode when the remote sticks are moved. This is enabled by default; set it to -1 to disable.
 This is the best way to ensure that an operator can easily take control of the vehicle and switch to the safest flight mode.
 
 ### Зв'язування RC перемикача з активацією режиму offboard.
