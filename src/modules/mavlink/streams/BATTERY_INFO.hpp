@@ -66,17 +66,12 @@ private:
 			battery_status_s battery_status;
 
 			if (battery_sub.update(&battery_status)) {
-				if (battery_status.serial_number == 0) {
-					// Required to emit
-					continue;
-				}
-
 				mavlink_battery_info_t msg{};
 
 				msg.id = battery_status.id - 1;
 				msg.design_capacity = (float)(battery_status.capacity * 1000);
 				msg.full_charge_capacity = (float)(battery_status.state_of_health * battery_status.capacity * 1000.f) / 100.f;
-				msg.cycle_count = battery_status.cycle_count;
+				msg.cycle_count = battery_status.connected ? battery_status.cycle_count : UINT16_MAX;
 
 				if (battery_status.manufacture_date) {
 					uint16_t day = battery_status.manufacture_date % 32;
