@@ -21,7 +21,7 @@ jobs:
         run: bash ./Tools/setup/ubuntu.sh --no-sim-tools
 
       - name: Install missing PX4 Python build dependency
-        run: python3 -m pip install --user symforce
+        run: python3 -m pip install --user symforce==0.9.0
 
       - name: Build px4_fmu-v5_default
         run: source ~/.profile && make px4_fmu-v5_default
