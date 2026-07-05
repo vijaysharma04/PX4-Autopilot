@@ -81,25 +81,18 @@ private:
 
 			if (battery_sub.update(&battery_status)) {
 				mavlink_battery_info_t msg{};
-				bool battery_has_serial_number = false;
 
 				// load serial number from battery_info message until all static information fields were moved
 				for (int i = 0; i < battery_status_s::MAX_INSTANCES; ++i) {
 					if ((_serial_number_ids[i] != 0) && (_serial_number_ids[i] == battery_status.id)) {
 						snprintf(msg.serial_number, sizeof(msg.serial_number), "%s", _serial_numbers[i]);
-						battery_has_serial_number = true;
 					}
-				}
-
-				if (!battery_has_serial_number) {
-					// Only publish BATTERY_INFO if the battery has a serial number
-					continue;
 				}
 
 				msg.id = battery_status.id - 1;
 				msg.design_capacity = (float)(battery_status.capacity * 1000);
 				msg.full_charge_capacity = (float)(battery_status.state_of_health * battery_status.capacity * 1000.f) / 100.f;
-				msg.cycle_count = battery_status.cycle_count;
+				msg.cycle_count = battery_status.connected ? battery_status.cycle_count : UINT16_MAX;
 
 				if (battery_status.manufacture_date) {
 					uint16_t day = battery_status.manufacture_date % 32;

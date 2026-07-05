@@ -122,7 +122,7 @@ private:
 
 				// check if temperature valid
 				if (battery_status.connected && PX4_ISFINITE(battery_status.temperature)) {
-					bat_msg.temperature = battery_status.temperature * 100.f;
+					bat_msg.temperature = static_cast<int16_t>(roundf(battery_status.temperature * 100.f));
 
 				} else {
 					bat_msg.temperature = INT16_MAX;
