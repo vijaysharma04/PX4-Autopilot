@@ -21,7 +21,7 @@ jobs:
         run: bash ./Tools/setup/ubuntu.sh --no-sim-tools
 
       - name: Build px4_fmu-v5_default
-        run: make px4_fmu-v5_default
+        run: source ~/.profile && make px4_fmu-v5_default
 
       - name: Verify firmware artifact
         run: test -f build/px4_fmu-v5_default/px4_fmu-v5_default.px4
