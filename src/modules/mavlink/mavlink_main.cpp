@@ -41,6 +41,8 @@
  */
 
 #include <termios.h>
+#include <cstdio>
+#include <cstring>
 
 #ifdef CONFIG_NET
 #include <arpa/inet.h>
@@ -1109,13 +1111,6 @@ Mavlink::send_autopilot_capabilities()
 		memcpy(&msg.uid2, &px4_guid, sizeof(msg.uid2));
 #endif /* BOARD_HAS_NO_UUID */
 
-#ifdef BOARD_NVX_AIRCRAFT_SERIAL
-		static constexpr char nvx_aircraft_serial[] = BOARD_NVX_AIRCRAFT_SERIAL;
-		static_assert(sizeof(nvx_aircraft_serial) - 1 <= sizeof(msg.uid2), "NVX aircraft serial is too long");
-		memset(msg.uid2, 0, sizeof(msg.uid2));
-		memcpy(msg.uid2, nvx_aircraft_serial, sizeof(nvx_aircraft_serial) - 1);
-#endif /* BOARD_NVX_AIRCRAFT_SERIAL */
-
 #ifdef CONFIG_ARCH_BOARD_PX4_SITL
 		// To avoid that multiple SITL instances have the same UUID, we add the mavlink
 		// system ID. We subtract 1, so that the first UUID remains unchanged given the
@@ -1125,6 +1120,39 @@ Mavlink::send_autopilot_capabilities()
 		msg.uid += mavlink_system.sysid - 1;
 		msg.uid2[0] += mavlink_system.sysid - 1;
 #endif /* CONFIG_ARCH_BOARD_PX4_SITL */
+
+		// Use the per-aircraft serial provisioned in the SD card root when valid.
+		{
+			char nvx_serial[sizeof(msg.uid2) + 1] {};
+			FILE *fp = fopen("/fs/microsd/nvx_serial.txt", "r");
+
+			if (fp != nullptr) {
+				if (fgets(nvx_serial, sizeof(nvx_serial), fp) != nullptr) {
+					size_t len = strnlen(nvx_serial, sizeof(nvx_serial));
+
+					while (len > 0 && (nvx_serial[len - 1] == '\n'
+							       || nvx_serial[len - 1] == '\r'
+							       || nvx_serial[len - 1] == ' ')) {
+						nvx_serial[len - 1] = '\0';
+						len--;
+					}
+
+					const bool valid_len = len > 0 && len <= sizeof(msg.uid2);
+					const bool valid_prefix = len >= 3
+								  && nvx_serial[0] == 'N'
+								  && nvx_serial[1] == 'V'
+								  && nvx_serial[2] == 'X';
+
+					if (valid_len && valid_prefix) {
+						memset(msg.uid2, 0, sizeof(msg.uid2));
+						memcpy(msg.uid2, nvx_serial, len);
+					}
+				}
+
+				fclose(fp);
+			}
+		}
+
 		mavlink_msg_autopilot_version_send_struct(get_channel(), &msg);
 		return true;
 	}

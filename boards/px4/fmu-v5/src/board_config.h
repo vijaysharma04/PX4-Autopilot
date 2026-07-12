@@ -58,10 +58,6 @@
 
 #define BOARD_USES_PX4IO_VERSION       2
 
-// Per-aircraft NVX identity published in MAVLink AUTOPILOT_VERSION.uid2.
-// Change this value for each aircraft-specific firmware build.
-#define BOARD_NVX_AIRCRAFT_SERIAL      "NVXSAK2601"
-
 #define PX4IO_SERIAL_DEVICE            "/dev/ttyS6"
 #define PX4IO_SERIAL_TX_GPIO           GPIO_UART8_TX
 #define PX4IO_SERIAL_RX_GPIO           GPIO_UART8_RX
