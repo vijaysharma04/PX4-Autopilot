@@ -1109,6 +1109,13 @@ Mavlink::send_autopilot_capabilities()
 		memcpy(&msg.uid2, &px4_guid, sizeof(msg.uid2));
 #endif /* BOARD_HAS_NO_UUID */
 
+#ifdef BOARD_NVX_AIRCRAFT_SERIAL
+		static constexpr char nvx_aircraft_serial[] = BOARD_NVX_AIRCRAFT_SERIAL;
+		static_assert(sizeof(nvx_aircraft_serial) - 1 <= sizeof(msg.uid2), "NVX aircraft serial is too long");
+		memset(msg.uid2, 0, sizeof(msg.uid2));
+		memcpy(msg.uid2, nvx_aircraft_serial, sizeof(nvx_aircraft_serial) - 1);
+#endif /* BOARD_NVX_AIRCRAFT_SERIAL */
+
 #ifdef CONFIG_ARCH_BOARD_PX4_SITL
 		// To avoid that multiple SITL instances have the same UUID, we add the mavlink
 		// system ID. We subtract 1, so that the first UUID remains unchanged given the
