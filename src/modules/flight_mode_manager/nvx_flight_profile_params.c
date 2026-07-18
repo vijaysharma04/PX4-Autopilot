@@ -26,7 +26,7 @@
  *
  * Active manual Position-control response profile.
  *
- * @value 0 Cine
+ * @value 0 Steady
  * @value 1 Normal
  * @value 2 Sport
  * @group NVX

@@ -56,6 +56,12 @@ float interpolate(float from, float to, float alpha)
 NvxFlightProfileManager::NvxFlightProfileManager(ModuleParams *parent) :
 	ModuleParams(parent)
 {
+	if (_param_rc_map_fltmode.get() == kProfileChannelNumber) {
+		PX4_WARN("RC channel 5 reserved for flight profiles; disabling RC_MAP_FLTMODE conflict");
+		_param_rc_map_fltmode.set(0);
+		_param_rc_map_fltmode.commit();
+	}
+
 	_active_profile = sanitizeProfile(_param_nvx_flt_profile.get());
 	_requested_profile = _active_profile;
 	_candidate_profile = _active_profile;
@@ -80,7 +86,7 @@ NvxFlightProfile NvxFlightProfileManager::sanitizeProfile(int32_t value)
 const char *NvxFlightProfileManager::profileName(NvxFlightProfile profile)
 {
 	switch (profile) {
-	case NvxFlightProfile::Cine: return "CINE";
+	case NvxFlightProfile::Cine: return "STEADY";
 	case NvxFlightProfile::Sport: return "SPORT";
 	case NvxFlightProfile::Normal:
 	default: return "NORMAL";

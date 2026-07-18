@@ -56,6 +56,7 @@ private:
 	};
 
 	static constexpr uint8_t kProfileChannelIndex{4};
+	static constexpr int32_t kProfileChannelNumber{5};
 	static constexpr hrt_abstime kDebounceTime{200000};
 	static constexpr hrt_abstime kRcFreshTime{500000};
 	static constexpr hrt_abstime kTransitionTime{750000};
@@ -98,6 +99,7 @@ private:
 
 	DEFINE_PARAMETERS(
 		(ParamInt<px4::params::NVX_FLT_PROFILE>) _param_nvx_flt_profile,
+		(ParamInt<px4::params::RC_MAP_FLTMODE>) _param_rc_map_fltmode,
 		(ParamFloat<px4::params::MPC_VEL_MANUAL>) _param_mpc_vel_manual,
 		(ParamFloat<px4::params::MPC_ACC_HOR>) _param_mpc_acc_hor,
 		(ParamFloat<px4::params::MPC_JERK_MAX>) _param_mpc_jerk_max,
