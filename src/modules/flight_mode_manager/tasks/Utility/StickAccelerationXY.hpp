@@ -60,9 +60,10 @@ public:
 	void generateSetpoints(matrix::Vector2f stick_xy, const float yaw, const float yaw_sp, const matrix::Vector3f &pos,
 			       const matrix::Vector2f &vel_sp_feedback, const float dt);
 	void getSetpoints(matrix::Vector3f &pos_sp, matrix::Vector3f &vel_sp, matrix::Vector3f &acc_sp);
-	float getMaxAcceleration() { return _param_mpc_acc_hor.get(); };
-	float getMaxJerk() { return _param_mpc_jerk_max.get(); };
+	float getMaxAcceleration() { return fminf(_param_mpc_acc_hor.get(), _profile_acceleration_limit); };
+	float getMaxJerk() { return fminf(_param_mpc_jerk_max.get(), _profile_jerk_limit); };
 	void setVelocityConstraint(float vel) { _velocity_constraint = fmaxf(vel, FLT_EPSILON); };
+	void setProfileLimits(float velocity, float acceleration, float jerk);
 
 private:
 	void applyJerkLimit(const float dt);
@@ -83,6 +84,9 @@ private:
 	matrix::Vector2f _acceleration_setpoint_prev;
 
 	float _velocity_constraint{INFINITY};
+	float _profile_velocity_limit{INFINITY};
+	float _profile_acceleration_limit{INFINITY};
+	float _profile_jerk_limit{INFINITY};
 
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::MPC_VEL_MANUAL>) _param_mpc_vel_manual,

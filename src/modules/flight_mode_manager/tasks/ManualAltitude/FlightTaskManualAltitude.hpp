@@ -44,6 +44,8 @@
 #include "StickTiltXY.hpp"
 #include "StickYaw.hpp"
 #include <uORB/Subscription.hpp>
+#include <uORB/Subscription.hpp>
+#include <uORB/topics/nvx_flight_profile_status.h>
 
 class FlightTaskManualAltitude : public FlightTask
 {
@@ -60,6 +62,10 @@ protected:
 	virtual void _scaleSticks(); /**< scales sticks to velocity in z */
 	bool _checkTakeoff() override;
 	void _updateConstraintsFromEstimator();
+	void _updateNvxFlightProfileLimits();
+	float _nvxHorizontalSpeedLimit() const { return _nvx_horizontal_speed; }
+	float _nvxHorizontalAccelerationLimit() const { return _nvx_horizontal_acceleration; }
+	float _nvxHorizontalJerkLimit() const { return _nvx_horizontal_jerk; }
 
 	/**
 	 *  Check and sets for position lock.
@@ -77,6 +83,11 @@ protected:
 
 	float _velocity_constraint_up{INFINITY};
 	float _velocity_constraint_down{INFINITY};
+	float _nvx_horizontal_speed{INFINITY};
+	float _nvx_horizontal_acceleration{INFINITY};
+	float _nvx_horizontal_jerk{INFINITY};
+	float _nvx_climb_speed{INFINITY};
+	float _nvx_descent_speed{INFINITY};
 
 	DEFINE_PARAMETERS_CUSTOM_PARENT(FlightTask,
 					(ParamFloat<px4::params::MPC_HOLD_MAX_Z>) _param_mpc_hold_max_z,
@@ -132,4 +143,5 @@ private:
 	 * _dist_to_ground_lock.
 	 */
 	float _dist_to_ground_lock = NAN;
+	uORB::SubscriptionData<nvx_flight_profile_status_s> _nvx_flight_profile_status_sub{ORB_ID(nvx_flight_profile_status)};
 };

@@ -106,6 +106,9 @@ px4_add_module(
 	SRCS
 		FlightModeManager.cpp
 		FlightModeManager.hpp
+		NvxFlightProfileManager.cpp
+		NvxFlightProfileManager.hpp
+		nvx_flight_profile_params.c
 
 		${CMAKE_CURRENT_BINARY_DIR}/FlightTasks_generated.hpp
 		${CMAKE_CURRENT_BINARY_DIR}/FlightTasks_generated.cpp
