@@ -54,6 +54,18 @@ void StickYaw::ekfResetHandler(const float delta_yaw)
 	_yaw_error_ref = wrap_pi(_yaw_error_ref + delta_yaw);
 }
 
+void StickYaw::setProfileLimits(float yaw_rate_deg_s, float response_time_s)
+{
+	_profile_yaw_rate_deg_s = yaw_rate_deg_s > FLT_EPSILON ? yaw_rate_deg_s : INFINITY;
+	_profile_response_time_s = response_time_s > FLT_EPSILON ? response_time_s : NAN;
+}
+
+void StickYaw::clearProfileLimits()
+{
+	_profile_yaw_rate_deg_s = INFINITY;
+	_profile_response_time_s = NAN;
+}
+
 void StickYaw::generateYawSetpoint(float &yawspeed_setpoint, float &yaw_setpoint, const float stick_yaw,
 				   const float yaw, const float deltatime, const float unaided_yaw)
 {
@@ -65,8 +77,11 @@ void StickYaw::generateYawSetpoint(float &yawspeed_setpoint, float &yaw_setpoint
 		yaw_setpoint = NAN;
 	}
 
-	_yawspeed_filter.setParameters(deltatime, _param_mpc_man_y_tau.get());
-	const float yawspeed_scale = math::min(math::radians(_param_mpc_man_y_max.get()), _yawspeed_constraint);
+	const float response_time = PX4_ISFINITE(_profile_response_time_s)
+				    ? _profile_response_time_s : _param_mpc_man_y_tau.get();
+	_yawspeed_filter.setParameters(deltatime, response_time);
+	const float profile_rate = math::radians(fminf(_param_mpc_man_y_max.get(), _profile_yaw_rate_deg_s));
+	const float yawspeed_scale = math::min(profile_rate, _yawspeed_constraint);
 	yawspeed_setpoint = _yawspeed_filter.update(stick_yaw * yawspeed_scale);
 	yaw_setpoint = updateYawLock(yaw, yawspeed_setpoint, yaw_setpoint, yaw_correction_prev);
 }

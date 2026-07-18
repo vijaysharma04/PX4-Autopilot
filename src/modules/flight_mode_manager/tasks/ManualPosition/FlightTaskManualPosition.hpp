@@ -53,6 +53,7 @@ public:
 	bool updateInitialize() override;
 
 protected:
+	bool _usesNvxFlightProfile() const override { return true; }
 	void _updateXYlock(); /**< applies position lock based on stick and velocity */
 	void _updateSetpoints() override;
 	void _scaleSticks() override;

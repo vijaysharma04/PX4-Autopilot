@@ -35,6 +35,7 @@
 
 #include "FlightTask.hpp"
 #include "FlightTasks_generated.hpp"
+#include "NvxFlightProfileManager.hpp"
 
 #include <drivers/drv_hrt.h>
 #include <px4_platform_common/module.h>
@@ -137,6 +138,7 @@ private:
 
 	vehicle_command_s _current_command{};
 	bool _command_failed{false};
+	NvxFlightProfileManager _nvx_flight_profile_manager{this};
 
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 

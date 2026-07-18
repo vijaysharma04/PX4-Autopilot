@@ -92,10 +92,38 @@ void FlightTaskManualAltitude::_updateConstraintsFromEstimator()
 void FlightTaskManualAltitude::_scaleSticks()
 {
 	// Use sticks input with deadzone and exponential curve for vertical velocity
-	const float vel_max_up = fminf(_param_mpc_z_vel_max_up.get(), _velocity_constraint_up);
-	const float vel_max_down = fminf(_param_mpc_z_vel_max_dn.get(), _velocity_constraint_down);
+	const float vel_max_up = fminf(fminf(_param_mpc_z_vel_max_up.get(), _velocity_constraint_up), _nvx_climb_speed);
+	const float vel_max_down = fminf(fminf(_param_mpc_z_vel_max_dn.get(), _velocity_constraint_down), _nvx_descent_speed);
 	const float vel_max_z = (_sticks.getPosition()(2) > 0.0f) ? vel_max_down : vel_max_up;
 	_velocity_setpoint(2) = vel_max_z * _sticks.getPositionExpo()(2);
+}
+
+void FlightTaskManualAltitude::_updateNvxFlightProfileLimits()
+{
+	_nvx_flight_profile_status_sub.update();
+	const nvx_flight_profile_status_s &status = _nvx_flight_profile_status_sub.get();
+	const hrt_abstime now = hrt_absolute_time();
+	const bool fresh = status.timestamp > 0 && now >= status.timestamp && now - status.timestamp <= 500000;
+
+	if (fresh && PX4_ISFINITE(status.horizontal_speed) && PX4_ISFINITE(status.horizontal_acceleration)
+	    && PX4_ISFINITE(status.horizontal_jerk) && PX4_ISFINITE(status.yaw_rate_deg_s)
+	    && PX4_ISFINITE(status.yaw_response_time_s) && PX4_ISFINITE(status.climb_speed)
+	    && PX4_ISFINITE(status.descent_speed)) {
+		_nvx_horizontal_speed = status.horizontal_speed;
+		_nvx_horizontal_acceleration = status.horizontal_acceleration;
+		_nvx_horizontal_jerk = status.horizontal_jerk;
+		_nvx_climb_speed = status.climb_speed;
+		_nvx_descent_speed = status.descent_speed;
+		_stick_yaw.setProfileLimits(status.yaw_rate_deg_s, status.yaw_response_time_s);
+
+	} else {
+		_nvx_horizontal_speed = INFINITY;
+		_nvx_horizontal_acceleration = INFINITY;
+		_nvx_horizontal_jerk = INFINITY;
+		_nvx_climb_speed = INFINITY;
+		_nvx_descent_speed = INFINITY;
+		_stick_yaw.clearProfileLimits();
+	}
 }
 
 void FlightTaskManualAltitude::_updateAltitudeLock()
@@ -298,6 +326,9 @@ bool FlightTaskManualAltitude::update()
 {
 	bool ret = FlightTask::update();
 	_updateConstraintsFromEstimator();
+	if (_usesNvxFlightProfile()) {
+		_updateNvxFlightProfileLimits();
+	}
 	_scaleSticks();
 	_updateSetpoints();
 	_constraints.want_takeoff = _checkTakeoff();
