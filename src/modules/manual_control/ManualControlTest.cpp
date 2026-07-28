@@ -38,6 +38,7 @@
 
 static constexpr uint64_t SOME_TIME = 12345678;
 
+static constexpr uint8_t ACTION_ARM = action_request_s::ACTION_ARM;
 static constexpr uint8_t ACTION_KILL = action_request_s::ACTION_KILL;
 static constexpr uint8_t ACTION_UNKILL = action_request_s::ACTION_UNKILL;
 static constexpr uint8_t ACTION_VTOL_TRANSITION_TO_FIXEDWING = action_request_s::ACTION_VTOL_TRANSITION_TO_FIXEDWING;
@@ -93,6 +94,125 @@ public:
 	TestManualControl _manual_control;
 	hrt_abstime _timestamp{SOME_TIME};
 };
+
+TEST_F(SwitchTest, CscArmGestureRequiresBothSticksAndOneSecondHold)
+{
+	// GIVEN: the standard one-second hold and the arm gesture are enabled
+	const int32_t arm_hyst_ms = 1000;
+	param_set(param_find("COM_RC_ARM_HYST"), &arm_hyst_ms);
+	const int32_t arm_gesture_enabled = 1;
+	param_set(param_find("MAN_ARM_GESTURE"), &arm_gesture_enabled);
+
+	auto publish_rc = [this](float throttle, float yaw, float pitch, float roll) {
+		manual_control_setpoint_s input{};
+		input.timestamp = _timestamp;
+		input.timestamp_sample = _timestamp;
+		input.roll = roll;
+		input.pitch = pitch;
+		input.throttle = throttle;
+		input.yaw = yaw;
+		input.valid = true;
+		input.data_source = manual_control_setpoint_s::SOURCE_RC;
+		_manual_control_input_pub.publish(input);
+		_manual_control.processInput(_timestamp += 100_ms);
+	};
+
+	// WHEN: only the left stick is in the old arm corner
+	publish_rc(-1.f, 1.f, 0.f, 0.f);
+	// THEN: no arm request is sent
+	EXPECT_FALSE(_action_request_sub.update());
+
+	// WHEN: only the right stick is in the inward-down corner
+	publish_rc(0.f, 0.f, -1.f, -1.f);
+	// THEN: no arm request is sent
+	EXPECT_FALSE(_action_request_sub.update());
+
+	// WHEN: both sticks are held inward for less than COM_RC_ARM_HYST
+	publish_rc(-1.f, 1.f, -1.f, -1.f);
+	publish_rc(-1.f, 1.f, -1.f, -1.f);
+	publish_rc(-1.f, 1.f, -1.f, -1.f);
+	publish_rc(-1.f, 1.f, -1.f, -1.f);
+	publish_rc(-1.f, 1.f, -1.f, -1.f);
+	publish_rc(-1.f, 1.f, -1.f, -1.f);
+	publish_rc(-1.f, 1.f, -1.f, -1.f);
+	publish_rc(-1.f, 1.f, -1.f, -1.f);
+	publish_rc(-1.f, 1.f, -1.f, -1.f);
+	EXPECT_FALSE(_action_request_sub.update());
+
+	// WHEN: the gesture reaches the full hold duration
+	publish_rc(-1.f, 1.f, -1.f, -1.f);
+	publish_rc(-1.f, 1.f, -1.f, -1.f);
+	// THEN: exactly one normal Commander arm request is sent
+	ASSERT_TRUE(_action_request_sub.update());
+	EXPECT_EQ(_action_request_sub.get().action, ACTION_ARM);
+	EXPECT_EQ(_action_request_sub.get().source, action_request_s::SOURCE_RC_STICK_GESTURE);
+
+	// WHEN: the sticks remain in the CSC region
+	publish_rc(-1.f, 1.f, -1.f, -1.f);
+	publish_rc(-1.f, 1.f, -1.f, -1.f);
+	// THEN: no duplicate request is sent
+	EXPECT_FALSE(_action_request_sub.update());
+
+	// WHEN: both sticks leave the CSC region and repeat the full hold
+	publish_rc(0.f, 0.f, 0.f, 0.f);
+	EXPECT_FALSE(_action_request_sub.update());
+
+	for (int i = 0; i < 11; ++i) {
+		publish_rc(-1.f, 1.f, -1.f, -1.f);
+	}
+
+	// THEN: a new request is allowed only after that release and repeat
+	ASSERT_TRUE(_action_request_sub.update());
+	EXPECT_EQ(_action_request_sub.get().action, ACTION_ARM);
+}
+
+TEST_F(SwitchTest, CscArmGestureCancelsOnRcLossAndNeverDisarmsAnArmedVehicle)
+{
+	const int32_t arm_hyst_ms = 1000;
+	param_set(param_find("COM_RC_ARM_HYST"), &arm_hyst_ms);
+	const int32_t arm_gesture_enabled = 1;
+	param_set(param_find("MAN_ARM_GESTURE"), &arm_gesture_enabled);
+
+	auto publish_csc = [this]() {
+		manual_control_setpoint_s input{};
+		input.timestamp = _timestamp;
+		input.timestamp_sample = _timestamp;
+		input.roll = -1.f;
+		input.pitch = -1.f;
+		input.throttle = -1.f;
+		input.yaw = 1.f;
+		input.valid = true;
+		input.data_source = manual_control_setpoint_s::SOURCE_RC;
+		_manual_control_input_pub.publish(input);
+		_manual_control.processInput(_timestamp += 100_ms);
+	};
+
+	// GIVEN: a partial CSC hold
+	publish_csc();
+	publish_csc();
+	publish_csc();
+	publish_csc();
+	publish_csc();
+	EXPECT_FALSE(_action_request_sub.update());
+
+	// WHEN: RC input becomes stale
+	_manual_control.processInput(_timestamp += 600_ms);
+	// THEN: the hold is cancelled without an arm request
+	EXPECT_FALSE(_action_request_sub.update());
+
+	// GIVEN: the vehicle is already armed
+	uORB::Publication<vehicle_status_s> vehicle_status_pub{ORB_ID(vehicle_status)};
+	vehicle_status_pub.publish({.arming_state = vehicle_status_s::ARMING_STATE_ARMED});
+	_manual_control.processInput(_timestamp += 10_ms);
+
+	// WHEN: the full CSC is held while armed
+	for (int i = 0; i < 11; ++i) {
+		publish_csc();
+	}
+
+	// THEN: CSC does not request either arming or disarming
+	EXPECT_FALSE(_action_request_sub.update());
+}
 
 
 TEST_F(SwitchTest, KillSwitch)
