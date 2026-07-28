@@ -361,18 +361,21 @@ void ManualControl::updateParams()
 
 void ManualControl::processStickArming(const manual_control_setpoint_s &input)
 {
-	// Arm gesture
-	const bool right_stick_centered = (fabsf(input.pitch) < 0.1f) && (fabsf(input.roll) < 0.1f);
-	const bool left_stick_lower_right = (input.throttle < -0.8f) && (input.yaw > 0.9f);
+	// Arm gesture: both sticks down and inward. Only physical RC input may arm.
+	const bool csc_arm_gesture = input.data_source == manual_control_setpoint_s::SOURCE_RC
+				     && input.throttle < -0.95f && input.yaw > 0.95f
+				     && input.pitch < -0.95f && input.roll < -0.95f;
 
 	const bool previous_stick_arm_hysteresis = _stick_arm_hysteresis.get_state();
-	_stick_arm_hysteresis.set_state_and_update(left_stick_lower_right && right_stick_centered, input.timestamp);
+	_stick_arm_hysteresis.set_state_and_update(csc_arm_gesture, input.timestamp);
 
-	if (_param_man_arm_gesture.get() && !previous_stick_arm_hysteresis && _stick_arm_hysteresis.get_state()) {
+	if (_param_man_arm_gesture.get() && !_armed
+	    && !previous_stick_arm_hysteresis && _stick_arm_hysteresis.get_state()) {
 		sendActionRequest(action_request_s::ACTION_ARM, action_request_s::SOURCE_RC_STICK_GESTURE);
 	}
 
 	// Disarm gesture
+	const bool right_stick_centered = (fabsf(input.pitch) < 0.1f) && (fabsf(input.roll) < 0.1f);
 	const bool left_stick_lower_left = (input.throttle < -0.8f) && (input.yaw < -0.9f);
 
 	const bool previous_stick_disarm_hysteresis = _stick_disarm_hysteresis.get_state();

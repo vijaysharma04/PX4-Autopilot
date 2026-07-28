@@ -34,8 +34,8 @@
 /**
  * Enable arm/disarm stick gesture
  *
- * This determines if moving the left stick to the lower right
- * arms and to the lower left disarms the vehicle.
+ * This determines if holding both sticks down and inward arms the vehicle.
+ * The existing lower-left stick gesture remains available for disarming.
  *
  * @boolean
  * @group Manual Control
