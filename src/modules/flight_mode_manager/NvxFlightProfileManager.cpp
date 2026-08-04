@@ -57,9 +57,7 @@ NvxFlightProfileManager::NvxFlightProfileManager(ModuleParams *parent) :
 	ModuleParams(parent)
 {
 	if (_param_rc_map_fltmode.get() == kProfileChannelNumber) {
-		PX4_WARN("RC channel 5 reserved for flight profiles; disabling RC_MAP_FLTMODE conflict");
-		_param_rc_map_fltmode.set(0);
-		_param_rc_map_fltmode.commit();
+		PX4_WARN("RC_MAP_FLTMODE conflicts with flight profile channel 5; profile selection disabled");
 	}
 
 	_active_profile = sanitizeProfile(_param_nvx_flt_profile.get());
@@ -86,7 +84,7 @@ NvxFlightProfile NvxFlightProfileManager::sanitizeProfile(int32_t value)
 const char *NvxFlightProfileManager::profileName(NvxFlightProfile profile)
 {
 	switch (profile) {
-	case NvxFlightProfile::Cine: return "STEADY";
+	case NvxFlightProfile::Cine: return "CINE";
 	case NvxFlightProfile::Sport: return "SPORT";
 	case NvxFlightProfile::Normal:
 	default: return "NORMAL";
@@ -145,13 +143,15 @@ NvxFlightProfileManager::Limits NvxFlightProfileManager::limitsForProfile(NvxFli
 void NvxFlightProfileManager::processRcInput(hrt_abstime now)
 {
 	_input_rc_sub.update(&_input_rc);
+	const bool mapping_conflict = _param_rc_map_fltmode.get() == kProfileChannelNumber;
 	const bool fresh = _input_rc.timestamp_last_signal > 0
 			   && now >= _input_rc.timestamp_last_signal
 			   && now - _input_rc.timestamp_last_signal <= kRcFreshTime;
 	const bool channel_available = _input_rc.channel_count > kProfileChannelIndex;
 	const uint16_t value = channel_available ? _input_rc.values[kProfileChannelIndex] : 0;
 	const bool valid_value = value >= 800 && value <= 2200;
-	_switch_valid = fresh && channel_available && valid_value && !_input_rc.rc_lost && !_input_rc.rc_failsafe;
+	_switch_valid = !mapping_conflict && fresh && channel_available && valid_value
+			&& !_input_rc.rc_lost && !_input_rc.rc_failsafe;
 
 	if (!_switch_valid) {
 		if (_switch_was_valid) {
