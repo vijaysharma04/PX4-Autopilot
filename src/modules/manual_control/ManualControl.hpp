@@ -46,6 +46,7 @@
 #include <uORB/topics/manual_control_switches.h>
 #include <uORB/topics/manual_control_setpoint.h>
 #include <uORB/topics/parameter_update.h>
+#include <uORB/topics/vehicle_land_detected.h>
 #include <uORB/topics/vehicle_status.h>
 #include <uORB/Publication.hpp>
 #include <uORB/SubscriptionInterval.hpp>
@@ -106,6 +107,7 @@ private:
 	};
 	uORB::SubscriptionCallbackWorkItem _manual_control_switches_sub{this, ORB_ID(manual_control_switches)};
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
+	uORB::Subscription _vehicle_land_detected_sub{ORB_ID(vehicle_land_detected)};
 	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};
 
 	uORB::Publication<action_request_s> _action_request_pub{ORB_ID(action_request)};
@@ -138,6 +140,7 @@ private:
 	bool _video_recording{false};
 
 	bool _armed{false};
+	bool _landed{false};
 	uint8_t _system_id{1};
 	bool _rotary_wing{false};
 	bool _vtol{false};
@@ -149,6 +152,7 @@ private:
 		(ParamBool<px4::params::MAN_ARM_GESTURE>) _param_man_arm_gesture,
 		(ParamFloat<px4::params::MAN_KILL_GEST_T>) _param_man_kill_gest_t,
 		(ParamInt<px4::params::COM_RC_ARM_HYST>) _param_com_rc_arm_hyst,
+		(ParamFloat<px4::params::COM_DISARM_LAND>) _param_com_disarm_land,
 		(ParamBool<px4::params::COM_ARM_SWISBTN>) _param_com_arm_swisbtn,
 		(ParamInt<px4::params::COM_FLTMODE1>) _param_fltmode_1,
 		(ParamInt<px4::params::COM_FLTMODE2>) _param_fltmode_2,

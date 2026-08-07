@@ -77,6 +77,12 @@ void ManualControl::Run()
 
 void ManualControl::processInput(hrt_abstime now)
 {
+	vehicle_land_detected_s vehicle_land_detected;
+
+	if (_vehicle_land_detected_sub.update(&vehicle_land_detected)) {
+		_landed = vehicle_land_detected.landed;
+	}
+
 	if (_vehicle_status_sub.updated()) {
 		vehicle_status_s vehicle_status;
 
@@ -304,7 +310,8 @@ void ManualControl::updateParams()
 	ModuleParams::updateParams();
 
 	_stick_arm_hysteresis.set_hysteresis_time_from(false, _param_com_rc_arm_hyst.get() * 1_ms);
-	_stick_disarm_hysteresis.set_hysteresis_time_from(false, _param_com_rc_arm_hyst.get() * 1_ms);
+	const float disarm_land_delay_s = _param_com_disarm_land.get() > 0.f ? _param_com_disarm_land.get() : 0.f;
+	_stick_disarm_hysteresis.set_hysteresis_time_from(false, disarm_land_delay_s * 1_s);
 	_button_arm_hysteresis.set_hysteresis_time_from(false, _param_com_rc_arm_hyst.get() * 1_ms);
 	_stick_kill_hysteresis.set_hysteresis_time_from(false, _param_man_kill_gest_t.get() * 1_s);
 
@@ -362,7 +369,6 @@ void ManualControl::updateParams()
 void ManualControl::processStickArming(const manual_control_setpoint_s &input)
 {
 	// Arm gesture
-	const bool right_stick_centered = (fabsf(input.pitch) < 0.1f) && (fabsf(input.roll) < 0.1f);
 	const bool left_stick_lower_right = (input.throttle < -0.8f) && (input.yaw > 0.9f);
 	const bool right_stick_lower_left = (input.pitch < -0.9f) && (input.roll < -0.9f);
 
@@ -373,11 +379,12 @@ void ManualControl::processStickArming(const manual_control_setpoint_s &input)
 		sendActionRequest(action_request_s::ACTION_ARM, action_request_s::SOURCE_RC_STICK_GESTURE);
 	}
 
-	// Disarm gesture
-	const bool left_stick_lower_left = (input.throttle < -0.8f) && (input.yaw < -0.9f);
+	// After landing, holding only the throttle fully down requests disarming.
+	const bool throttle_low_after_landing = _param_com_disarm_land.get() > 0.f && _armed && _landed
+					     && (input.throttle < -0.95f);
 
 	const bool previous_stick_disarm_hysteresis = _stick_disarm_hysteresis.get_state();
-	_stick_disarm_hysteresis.set_state_and_update(left_stick_lower_left && right_stick_centered, input.timestamp);
+	_stick_disarm_hysteresis.set_state_and_update(throttle_low_after_landing, input.timestamp);
 
 	if (_param_man_arm_gesture.get() && !previous_stick_disarm_hysteresis && _stick_disarm_hysteresis.get_state()) {
 		sendActionRequest(action_request_s::ACTION_DISARM, action_request_s::SOURCE_RC_STICK_GESTURE);
@@ -385,6 +392,7 @@ void ManualControl::processStickArming(const manual_control_setpoint_s &input)
 
 	// Kill gesture
 	if (_param_man_kill_gest_t.get() > 0.f) {
+		const bool left_stick_lower_left = (input.throttle < -0.8f) && (input.yaw < -0.9f);
 		const bool right_stick_lower_right = (input.pitch < -0.9f) && (input.roll > 0.9f);
 
 		const bool previous_stick_kill_hysteresis = _stick_kill_hysteresis.get_state();

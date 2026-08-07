@@ -35,8 +35,8 @@
  * Enable arm/disarm stick gesture
  *
  * This determines if moving the left stick to the lower right and the right
- * stick to the lower left arms, and the left stick to the lower left disarms
- * the vehicle.
+ * stick to the lower left arms. After landing, holding only the throttle fully
+ * down for COM_DISARM_LAND requests disarming.
  *
  * @boolean
  * @group Manual Control
