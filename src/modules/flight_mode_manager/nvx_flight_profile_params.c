@@ -32,3 +32,14 @@
  * @group NVX
  */
 PARAM_DEFINE_INT32(NVX_FLT_PROFILE, 1);
+
+/**
+ * NVX aircraft model identifier
+ *
+ * Identifies the aircraft capability set to connected NVX Fly applications.
+ *
+ * @value 0 Saksham
+ * @value 1 Saksham E
+ * @group NVX
+ */
+PARAM_DEFINE_INT32(NVX_MODEL_ID, 1);
