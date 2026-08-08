@@ -61,6 +61,8 @@ bool FlightTaskManualAcceleration::update()
 {
 	bool ret = FlightTaskManualAltitudeSmoothVel::update();
 
+	_stick_acceleration_xy.setProfileLimits(_nvxHorizontalSpeedLimit(), _nvxHorizontalAccelerationLimit(),
+			_nvxHorizontalJerkLimit());
 	_stick_acceleration_xy.generateSetpoints(_sticks.getPitchRollExpo(), _yaw, _yaw_setpoint, _position,
 			_velocity_setpoint_feedback.xy(), _deltatime);
 	_stick_acceleration_xy.getSetpoints(_position_setpoint, _velocity_setpoint, _acceleration_setpoint);

@@ -53,6 +53,8 @@ public:
 	void generateYawSetpoint(float &yawspeed_setpoint, float &yaw_setpoint, float stick_yaw, float yaw, float deltatime,
 				 float unaided_yaw = NAN);
 	void setYawspeedConstraint(float yawspeed) { _yawspeed_constraint = yawspeed; };
+	void setProfileLimits(float yaw_rate_deg_s, float response_time_s);
+	void clearProfileLimits();
 
 private:
 	AlphaFilter<float> _yawspeed_filter;
@@ -80,6 +82,8 @@ private:
 	float updateYawLock(float yaw, float yawspeed_setpoint, float yaw_setpoint, float yaw_correction_prev) const;
 
 	float _yawspeed_constraint{INFINITY};
+	float _profile_yaw_rate_deg_s{INFINITY};
+	float _profile_response_time_s{NAN};
 
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::MPC_MAN_Y_MAX>) _param_mpc_man_y_max, ///< Maximum yaw speed with full stick deflection

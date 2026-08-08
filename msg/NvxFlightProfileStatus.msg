@@ -1,0 +1,18 @@
+uint64 timestamp
+uint64 profile_change_timestamp
+
+uint16 switch_value
+uint8 requested_profile
+uint8 active_profile
+
+bool switch_valid
+bool source_rc
+bool transition_active
+
+float32 horizontal_speed
+float32 horizontal_acceleration
+float32 horizontal_jerk
+float32 yaw_rate_deg_s
+float32 yaw_response_time_s
+float32 climb_speed
+float32 descent_speed

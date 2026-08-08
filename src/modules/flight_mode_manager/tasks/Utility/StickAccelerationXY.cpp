@@ -70,14 +70,23 @@ void StickAccelerationXY::resetAcceleration(const matrix::Vector2f &acceleration
 	}
 }
 
+void StickAccelerationXY::setProfileLimits(float velocity, float acceleration, float jerk)
+{
+	_profile_velocity_limit = velocity > FLT_EPSILON ? velocity : INFINITY;
+	_profile_acceleration_limit = acceleration > FLT_EPSILON ? acceleration : INFINITY;
+	_profile_jerk_limit = jerk > FLT_EPSILON ? jerk : INFINITY;
+}
+
 void StickAccelerationXY::generateSetpoints(Vector2f stick_xy, const float yaw, const float yaw_sp, const Vector3f &pos,
 		const matrix::Vector2f &vel_sp_feedback, const float dt)
 {
 	// maximum commanded velocity can be constrained dynamically
-	const float velocity_sc = fminf(_param_mpc_vel_manual.get(), _velocity_constraint);
+	const float profile_velocity = fminf(_param_mpc_vel_manual.get(), _profile_velocity_limit);
+	const float velocity_sc = fminf(profile_velocity, _velocity_constraint);
 	Vector2f velocity_scale(velocity_sc, velocity_sc);
 	// maximum commanded acceleration is scaled down with velocity
-	const float acceleration_sc = _param_mpc_acc_hor.get() * (velocity_sc / _param_mpc_vel_manual.get());
+	const float profile_acceleration = fminf(_param_mpc_acc_hor.get(), _profile_acceleration_limit);
+	const float acceleration_sc = profile_acceleration * (velocity_sc / profile_velocity);
 	Vector2f acceleration_scale(acceleration_sc, acceleration_sc);
 
 	acceleration_scale *= 2.f; // because of drag the average acceleration is half
@@ -135,8 +144,9 @@ void StickAccelerationXY::applyJerkLimit(const float dt)
 	// Scale each jerk limit with the normalized projection of the acceleration
 	// setpoint increment to produce a synchronized motion
 	const Vector2f dir = Vector2f(_acceleration_setpoint - _acceleration_setpoint_prev).unit_or_zero();
-	const float jerk_max_x = fabsf(dir(0)) * _param_mpc_jerk_max.get();
-	const float jerk_max_y = fabsf(dir(1)) * _param_mpc_jerk_max.get();
+	const float jerk_limit = fminf(_param_mpc_jerk_max.get(), _profile_jerk_limit);
+	const float jerk_max_x = fabsf(dir(0)) * jerk_limit;
+	const float jerk_max_y = fabsf(dir(1)) * jerk_limit;
 	_acceleration_slew_rate_x.setSlewRate(jerk_max_x);
 	_acceleration_slew_rate_y.setSlewRate(jerk_max_y);
 	_acceleration_setpoint(0) = _acceleration_slew_rate_x.update(_acceleration_setpoint(0), dt);
@@ -149,7 +159,7 @@ Vector2f StickAccelerationXY::calculateDrag(Vector2f drag_coefficient, const flo
 	_brake_boost_filter.setParameters(dt, .8f);
 
 	if (stick_xy.norm_squared() < FLT_EPSILON) {
-		_brake_boost_filter.update(math::max(2.f, sqrtf(_param_mpc_vel_manual.get())));
+		_brake_boost_filter.update(math::max(2.f, sqrtf(fminf(_param_mpc_vel_manual.get(), _profile_velocity_limit))));
 
 	} else {
 		_brake_boost_filter.update(1.f);

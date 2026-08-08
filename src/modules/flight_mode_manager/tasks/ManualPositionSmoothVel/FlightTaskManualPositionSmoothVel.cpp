@@ -118,9 +118,9 @@ void FlightTaskManualPositionSmoothVel::_updateTrajConstraints()
 
 void FlightTaskManualPositionSmoothVel::_updateTrajConstraintsXY()
 {
-	_smoothing_xy.setMaxJerk(_param_mpc_jerk_max.get());
-	_smoothing_xy.setMaxAccel(_param_mpc_acc_hor_max.get());
-	_smoothing_xy.setMaxVel(_param_mpc_vel_manual.get());
+	_smoothing_xy.setMaxJerk(fminf(_param_mpc_jerk_max.get(), _nvxHorizontalJerkLimit()));
+	_smoothing_xy.setMaxAccel(fminf(_param_mpc_acc_hor_max.get(), _nvxHorizontalAccelerationLimit()));
+	_smoothing_xy.setMaxVel(fminf(_param_mpc_vel_manual.get(), _nvxHorizontalSpeedLimit()));
 }
 
 void FlightTaskManualPositionSmoothVel::_updateTrajConstraintsZ()

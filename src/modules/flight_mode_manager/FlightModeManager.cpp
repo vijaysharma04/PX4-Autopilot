@@ -106,6 +106,7 @@ void FlightModeManager::Run()
 		_vehicle_control_mode_sub.update();
 		_vehicle_land_detected_sub.update();
 		_vehicle_status_sub.update();
+		_nvx_flight_profile_manager.update(dt, _vehicle_status_sub.get());
 
 		start_flight_task();
 
