@@ -32,3 +32,12 @@
  * @group NVX
  */
 PARAM_DEFINE_INT32(NVX_FLT_PROFILE, 1);
+
+/**
+ * Aircraft model identifier
+ *
+ * @value 1 Saksham
+ * @value 2 Saksham E
+ * @group NVX
+ */
+PARAM_DEFINE_INT32(NVX_MODEL_ID, 2);
