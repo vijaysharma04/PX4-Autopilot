@@ -121,6 +121,7 @@ private:
 	bool _previous_switches_initialized{false};
 	manual_control_switches_s _previous_switches{};
 	bool _published_invalid_once{false};
+	bool _stick_arm_latched{false};
 
 	systemlib::Hysteresis _stick_arm_hysteresis{false};
 	systemlib::Hysteresis _stick_disarm_hysteresis{false};

@@ -38,6 +38,7 @@
 
 static constexpr uint64_t SOME_TIME = 12345678;
 
+static constexpr uint8_t ACTION_ARM = action_request_s::ACTION_ARM;
 static constexpr uint8_t ACTION_KILL = action_request_s::ACTION_KILL;
 static constexpr uint8_t ACTION_UNKILL = action_request_s::ACTION_UNKILL;
 static constexpr uint8_t ACTION_VTOL_TRANSITION_TO_FIXEDWING = action_request_s::ACTION_VTOL_TRANSITION_TO_FIXEDWING;
@@ -92,7 +93,59 @@ public:
 
 	TestManualControl _manual_control;
 	hrt_abstime _timestamp{SOME_TIME};
+
+	void publishSticks(float roll, float pitch, float yaw, float throttle, hrt_abstime elapsed = 100_ms)
+	{
+		manual_control_setpoint_s input{};
+		input.timestamp_sample = _timestamp;
+		input.valid = true;
+		input.data_source = manual_control_setpoint_s::SOURCE_RC;
+		input.roll = roll;
+		input.pitch = pitch;
+		input.yaw = yaw;
+		input.throttle = throttle;
+		_manual_control_input_pub.publish(input);
+		_manual_control.processInput(_timestamp += elapsed);
+	}
 };
+
+TEST_F(SwitchTest, InwardStickArmGesture)
+{
+	for (int i = 0; i < 10; ++i) {
+		publishSticks(-1.f, -1.f, 1.f, -1.f);
+		EXPECT_FALSE(_action_request_sub.update());
+	}
+
+	publishSticks(-1.f, -1.f, 1.f, -1.f);
+	ASSERT_TRUE(_action_request_sub.update());
+	EXPECT_EQ(_action_request_sub.get().action, ACTION_ARM);
+
+	publishSticks(-1.f, -1.f, 1.f, -1.f);
+	EXPECT_FALSE(_action_request_sub.update());
+}
+
+TEST_F(SwitchTest, OutwardStickArmGestureRequiresRelease)
+{
+	for (int i = 0; i < 11; ++i) {
+		publishSticks(1.f, -1.f, -1.f, -1.f);
+	}
+
+	ASSERT_TRUE(_action_request_sub.update());
+	EXPECT_EQ(_action_request_sub.get().action, ACTION_ARM);
+
+	publishSticks(1.f, -1.f, -1.f, -1.f);
+	EXPECT_FALSE(_action_request_sub.update());
+
+	publishSticks(0.f, 0.f, 0.f, -1.f);
+	EXPECT_FALSE(_action_request_sub.update());
+
+	for (int i = 0; i < 11; ++i) {
+		publishSticks(1.f, -1.f, -1.f, -1.f);
+	}
+
+	ASSERT_TRUE(_action_request_sub.update());
+	EXPECT_EQ(_action_request_sub.get().action, ACTION_ARM);
+}
 
 
 TEST_F(SwitchTest, KillSwitch)
