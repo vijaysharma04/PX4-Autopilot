@@ -53,6 +53,7 @@
 #include "checks/imuConsistencyCheck.hpp"
 #include "checks/magnetometerCheck.hpp"
 #include "checks/manualControlCheck.hpp"
+#include "checks/mcuTemperatureCheck.hpp"
 #include "checks/homePositionCheck.hpp"
 #include "checks/modeCheck.hpp"
 #include "checks/parachuteCheck.hpp"
@@ -132,6 +133,7 @@ private:
 	ImuConsistencyChecks _imu_consistency_checks;
 	MagnetometerChecks _magnetometer_checks;
 	ManualControlChecks _manual_control_checks;
+	McuTemperatureChecks _mcu_temperature_checks;
 	HomePositionChecks _home_position_checks;
 	ModeChecks _mode_checks;
 	OpenDroneIDChecks _open_drone_id_checks;
@@ -169,6 +171,7 @@ private:
 		&_imu_consistency_checks,
 		&_magnetometer_checks,
 		&_manual_control_checks,
+		&_mcu_temperature_checks,
 		&_home_position_checks,
 		&_mission_checks,
 		&_offboard_checks, // must be after _estimator_checks
@@ -187,4 +190,3 @@ private:
 		&_vtol_checks,
 	};
 };
-

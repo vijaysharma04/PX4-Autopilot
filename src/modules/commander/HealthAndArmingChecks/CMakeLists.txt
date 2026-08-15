@@ -52,6 +52,7 @@ px4_add_library(health_and_arming_checks
 	checks/imuConsistencyCheck.cpp
 	checks/magnetometerCheck.cpp
 	checks/manualControlCheck.cpp
+	checks/mcuTemperatureCheck.cpp
 	checks/missionCheck.cpp
 	checks/modeCheck.cpp
 	checks/offboardCheck.cpp
