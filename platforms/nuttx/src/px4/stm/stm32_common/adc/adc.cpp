@@ -137,6 +137,12 @@ int px4_arch_adc_init(uint32_t base_address)
 	rSMPR1(base_address) = 0b00000011011011011011011011011011;
 	rSMPR2(base_address) = 0b00011011011011011011011011011011;
 
+#if defined(CONFIG_ARCH_CHIP_STM32F7)
+	/* The STM32F7 die-temperature sensor requires at least 10 us acquisition time. */
+	rSMPR1(base_address) = (rSMPR1(base_address) & ~ADC_SMPR1_SMP18_MASK)
+			       | (ADC_SMPR_480 << ADC_SMPR1_SMP18_SHIFT);
+#endif
+
 	/* XXX for F2/4, might want to select 12-bit mode? */
 	rCR1(base_address) = 0;
 
