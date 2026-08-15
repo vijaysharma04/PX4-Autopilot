@@ -1,0 +1,5 @@
+menuconfig SYSTEMCMDS_NVX_SECURITY
+	bool "nvx_security"
+	default n
+	---help---
+		Inspect or change temporary NVX USB service access.

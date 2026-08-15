@@ -138,6 +138,7 @@ px4_add_module(
 		conversion
 		sensor_calibration
 		geo
+		nvx_security
 		mavlink_c
 		timesync
 		tunes
