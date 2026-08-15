@@ -34,6 +34,7 @@
 #if defined(CONFIG_SYSTEM_CDCACM)
 
 #include "cdcacm_autostart.h"
+#include <lib/nvx_security/nvx_security.h>
 
 __BEGIN_DECLS
 #include <arch/board/board.h>
@@ -273,8 +274,8 @@ void CdcAcmAutostart::state_connecting()
 	px4_close(_ttyacm_fd);
 	_ttyacm_fd = -1;
 
-	// Parse for mavlink reboot command
-	if (scan_buffer_for_mavlink_reboot()) {
+	// Production mode accepts only MAVLink heartbeat discovery on external USB.
+	if (nvx_security::service_mode() && scan_buffer_for_mavlink_reboot()) {
 		// Reboot incoming. Return without rescheduling.
 		return;
 	}
@@ -294,7 +295,7 @@ void CdcAcmAutostart::state_connecting()
 	}
 
 	// Parse for carriage returns indicating someone is trying to use the nsh.
-	if (scan_buffer_for_carriage_returns()) {
+	if (nvx_security::service_mode() && scan_buffer_for_carriage_returns()) {
 		if (start_nsh()) {
 			_state = UsbAutoStartState::connected;
 			_active_protocol = UsbProtocol::nsh;
@@ -310,7 +311,7 @@ void CdcAcmAutostart::state_connecting()
 #if defined(CONFIG_SERIAL_PASSTHRU_UBLOX)
 
 	// Parse for ublox start of packet byte sequence.
-	if (scan_buffer_for_ublox_bytes()) {
+	if (nvx_security::service_mode() && scan_buffer_for_ublox_bytes()) {
 		if (start_ublox_serial_passthru(baudrate)) {
 			_state = UsbAutoStartState::connected;
 			_active_protocol = UsbProtocol::ublox;

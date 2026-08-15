@@ -42,6 +42,7 @@
 
 #include <lib/airspeed/airspeed.h>
 #include <lib/conversion/rotation.h>
+#include <lib/nvx_security/nvx_security.h>
 #include <lib/systemlib/px4_macros.h>
 
 #include <math.h>
@@ -495,6 +496,43 @@ template <class T>
 void MavlinkReceiver::handle_message_command_both(mavlink_message_t *msg, const T &cmd_mavlink,
 		const vehicle_command_s &vehicle_command)
 {
+	static constexpr uint16_t NVX_SECURITY_COMMAND = 31010;
+
+	if (cmd_mavlink.command == NVX_SECURITY_COMMAND) {
+		const bool target_ok = evaluate_target_ok(cmd_mavlink.command, cmd_mavlink.target_system,
+				       cmd_mavlink.target_component);
+		const bool trusted_controller = strcmp(_mavlink->get_device_name(), "/dev/ttyS1") == 0;
+		uint8_t result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_DENIED;
+
+		if (target_ok && trusted_controller) {
+			const int action = (int)roundf(cmd_mavlink.param1);
+			vehicle_status_s vehicle_status{};
+			_vehicle_status_sub.copy(&vehicle_status);
+
+			if (action == 0) {
+				nvx_security::set_service_mode(false);
+				result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_ACCEPTED;
+
+			} else if (action == 1 && vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_DISARMED) {
+				nvx_security::set_service_mode(true);
+				result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_ACCEPTED;
+
+			} else if (action == 2) {
+				result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_ACCEPTED;
+
+			} else if (action != 1) {
+				result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_UNSUPPORTED;
+			}
+		}
+
+		mavlink_statustext_t status{};
+		status.severity = MAV_SEVERITY_INFO;
+		snprintf(status.text, sizeof(status.text), "NVX Security: %s", nvx_security::mode_name());
+		mavlink_msg_statustext_send_struct(_mavlink->get_channel(), &status);
+		acknowledge(msg->sysid, msg->compid, cmd_mavlink.command, result);
+		return;
+	}
+
 	bool target_ok = evaluate_target_ok(cmd_mavlink.command, cmd_mavlink.target_system, cmd_mavlink.target_component);
 	bool send_ack = true;
 	uint8_t result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_ACCEPTED;
@@ -3135,6 +3173,12 @@ MavlinkReceiver::run()
 				/* if read failed, this loop won't execute */
 				for (ssize_t i = 0; i < nread; i++) {
 					if (mavlink_parse_char(_mavlink->get_channel(), buf[i], &msg, &_status)) {
+						if (_mavlink->is_usb_uart() && !nvx_security::service_mode()
+						    && msg.msgid != MAVLINK_MSG_ID_HEARTBEAT
+						    && msg.msgid != MAVLINK_MSG_ID_PING
+						    && msg.msgid != MAVLINK_MSG_ID_TIMESYNC) {
+							continue;
+						}
 
 						/* check if we received version 2 and request a switch. */
 						if (!(_mavlink->get_status()->flags & MAVLINK_STATUS_FLAG_IN_MAVLINK1)) {

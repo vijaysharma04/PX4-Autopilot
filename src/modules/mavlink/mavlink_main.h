@@ -472,6 +472,7 @@ public:
 	static bool		boot_complete() { return _boot_complete; }
 
 	bool			is_usb_uart() { return _is_usb_uart; }
+	const char		*get_device_name() const { return _device_name; }
 
 	int			get_data_rate()		{ return _datarate; }
 	void			set_data_rate(int rate) { if (rate > 0) { _datarate = rate; } }

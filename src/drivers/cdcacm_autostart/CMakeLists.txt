@@ -37,4 +37,6 @@ px4_add_module(
 		# -DDEBUG_BUILD
 	SRCS
 		cdcacm_autostart.cpp
+	DEPENDS
+		nvx_security
 	)
