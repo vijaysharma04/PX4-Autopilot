@@ -568,7 +568,9 @@ int8_t ManualControl::navStateFromParam(int32_t param_value)
 {
 	// See src/modules/commander/module.yaml COM_FLTMODE${i}
 	switch(param_value) {
-		case 0: return vehicle_status_s::NAVIGATION_STATE_MANUAL;
+		// Manual mode is intentionally unavailable in NVX firmware. Treat legacy
+		// RC slot value 0 as unassigned instead of emitting a mode-change request.
+		case 0: return -1;
 		case 1: return vehicle_status_s::NAVIGATION_STATE_ALTCTL;
 		case 2: return vehicle_status_s::NAVIGATION_STATE_POSCTL;
 		case 3: return vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION;

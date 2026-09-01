@@ -24,7 +24,6 @@ parameters:
             type: enum
             values:
                 -1: Unassigned
-                0: Manual
                 1: Altitude
                 2: Position
                 9: Position Slow

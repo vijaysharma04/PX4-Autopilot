@@ -52,6 +52,12 @@ bool UserModeIntention::change(uint8_t user_intended_nav_state, ModeChangeSource
 		user_intended_nav_state = _handler->getReplacedModeIfAny(user_intended_nav_state);
 	}
 
+	// Manual mode is not user-selectable in NVX firmware. Keep forced changes available
+	// for the failsafe state machine so estimator-loss recovery remains intact.
+	if (user_intended_nav_state == vehicle_status_s::NAVIGATION_STATE_MANUAL && !force) {
+		return false;
+	}
+
 	// Always allow mode change while disarmed
 	bool always_allow = force || !isArmed();
 	bool allow_change = true;

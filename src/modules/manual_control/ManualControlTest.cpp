@@ -245,10 +245,9 @@ TEST_F(SwitchTest, ModeSwitch)
 	// WHEN: the mode switch is switched to 2
 	_manual_control_switches_pub.publish({.timestamp_sample = _timestamp, .mode_slot = manual_control_switches_s::MODE_SLOT_2});
 	_manual_control.processInput(_timestamp += 10_ms);
-	// THEN: action requested to switch to mode 2
-	EXPECT_TRUE(_action_request_sub.update());
-	EXPECT_EQ(_action_request_sub.get().action, ACTION_SWITCH_MODE);
-	EXPECT_EQ(_action_request_sub.get().mode, TestManualControl::navStateFromParam(NAVIGATION_STATE_MANUAL));
+	// THEN: no action is requested because the legacy Manual slot is disabled
+	EXPECT_FALSE(_action_request_sub.update());
+	EXPECT_EQ(TestManualControl::navStateFromParam(NAVIGATION_STATE_MANUAL), -1);
 
 	// WHEN: the mode switch is switched to 3
 	_manual_control_switches_pub.publish({.timestamp_sample = _timestamp, .mode_slot = manual_control_switches_s::MODE_SLOT_3});
@@ -324,8 +323,6 @@ TEST_F(SwitchTest, ModeSwitchInitializationArmed)
 	// GIVEN: the switch changes position
 	_manual_control_switches_pub.publish({.timestamp_sample = _timestamp, .mode_slot = manual_control_switches_s::MODE_SLOT_2});
 	_manual_control.processInput(_timestamp += 10_ms);
-	// THEN: the mode switch is requested
-	EXPECT_TRUE(_action_request_sub.update());
-	EXPECT_EQ(_action_request_sub.get().action, ACTION_SWITCH_MODE);
-	EXPECT_EQ(_action_request_sub.get().mode, TestManualControl::navStateFromParam(NAVIGATION_STATE_MANUAL));
+	// THEN: no action is requested because the legacy Manual slot is disabled
+	EXPECT_FALSE(_action_request_sub.update());
 }
